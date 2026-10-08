@@ -59,6 +59,7 @@ HTML_TEMPLATE = """
         .btn-active { background-color: #28a745; color: white; }
         .btn-deactive { background-color: #ffc107; color: black; }
         .btn-block { background-color: #dc3545; color: white; }
+        .btn-delete { background-color: #6c757d; color: white; }
         .btn-logout { background-color: #6c757d; color: white; float: right; }
         .login-box { max-width: 400px; margin: 80px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
         .form-group { margin-bottom: 15px; }
@@ -117,6 +118,7 @@ HTML_TEMPLATE = """
                     <a href="/update_status?uid={{ uid }}&status=active" class="btn btn-active">Activate</a>
                     <a href="/update_status?uid={{ uid }}&status=deactive" class="btn btn-deactive">Deactivate</a>
                     <a href="/update_status?uid={{ uid }}&status=blocked" class="btn btn-block">Block</a>
+                    <a href="/delete_user?uid={{ uid }}" class="btn btn-delete" onclick="return confirm('Is user ko table se delete karna chahte hain?');">Delete 🗑️</a>
                 </td>
             </tr>
             {% else %}
@@ -217,6 +219,20 @@ def update_status():
 
     return redirect(url_for("index"))
 
+@app.route("/delete_user")
+def delete_user():
+    if "admin_logged_in" not in session:
+        return redirect(url_for("index"))
+
+    uid = request.args.get("uid")
+    if uid:
+        db = load_db()
+        if uid in db.get("users", {}):
+            del db["users"][uid]
+            save_db(db)
+
+    return redirect(url_for("index", msg="User record deleted successfully!"))
+
 @app.route("/change_credentials", methods=["POST"])
 def change_credentials():
     if "admin_logged_in" not in session:
@@ -247,7 +263,6 @@ def check_status():
     user_key = f"{username}_{device_id}"
 
     if user_key not in users:
-        # Default status for new users is 'active'
         users[user_key] = {
             "username": username,
             "device_id": device_id,
@@ -258,7 +273,6 @@ def check_status():
         db["users"] = users
         save_db(db)
     else:
-        # Update last seen
         users[user_key]["last_seen"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         users[user_key]["device_name"] = device_name
         db["users"] = users
